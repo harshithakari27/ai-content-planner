@@ -21,34 +21,39 @@ export default function BrainstormPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: niche }),
       })
-      
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Server Error" }))
+        throw new Error(errorData.error || "AI failed to respond")
+      }
+
       const data = await response.json()
-      if (data.error) throw new Error(data.error)
-      
       const generatedContent = data.text
       setAiResult(generatedContent)
 
-      // 2. Save BOTH the niche and the AI content to Supabase
-      const { error } = await supabase
+      // 2. Save to Supabase
+      const { error: supabaseError } = await supabase
         .from('ideas')
         .insert([{ 
           niche: niche,
           content: generatedContent 
         }])
 
-      if (error) throw error
+      if (supabaseError) throw supabaseError
 
-      alert('Success! AI generated ideas and saved them to your library.')
-    } catch (err) {
+      alert('Success! Content generated and saved.')
+      setNiche('')
+
+    } catch (err: any) {
       console.error(err)
-      alert('Something went wrong. Check your API key and Supabase connection.')
+      alert(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-bold mb-2 text-white">AI Content Generator</h1>
       <p className="text-gray-400 mb-8">Enter your niche and let the AI build your scripts.</p>
 
@@ -56,7 +61,7 @@ export default function BrainstormPage() {
         <div className="flex flex-col gap-4">
           <input
             className="bg-black border border-gray-700 p-4 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="e.g. Finance for Teens, Minecraft Parkour..."
+            placeholder="e.g. Finance for Teens..."
             value={niche}
             onChange={(e) => setNiche(e.target.value)}
           />
@@ -71,9 +76,8 @@ export default function BrainstormPage() {
         </div>
       </div>
 
-      {/* Preview Area */}
       {aiResult && (
-        <div className="bg-gray-900 p-6 rounded-xl border border-blue-900 animate-in fade-in slide-in-from-bottom-4">
+        <div className="bg-gray-900 p-6 rounded-xl border border-blue-900">
           <h3 className="text-blue-400 font-bold mb-4 uppercase text-sm tracking-widest">Latest Generation</h3>
           <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">
             {aiResult}
